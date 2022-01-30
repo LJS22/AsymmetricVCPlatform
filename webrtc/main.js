@@ -38,7 +38,7 @@ pc.onicecandidate = ({ candidate }) => ws.send({ candidate });
 pc.onnegotiationneeded = async () => {
     try {
         data = await pc.setLocalDescription(await pc.createOffer());
-        console.log({ desc: pc.localDescription });
+        console.log({ data: pc.localDescription });
         ws.send(JSON.stringify({ data: pc.localDescription }));
     } catch (err) {
         console.error(err);
@@ -47,8 +47,8 @@ pc.onnegotiationneeded = async () => {
 
 pc.ontrack = (event) => {
     // Don't set srcObject again if it is already set.
-    if (remoteStream.srcObject) return;
-    remoteStream.srcObject = event.streams[0];
+    if (remoteVideo.srcObject) return;
+    remoteVideo.srcObject = event.streams[0];
 };
 
 // Call start() to initiate.
@@ -65,21 +65,23 @@ async function start() {
     }
 }
 
-ws.onmessage = async ({ desc, candidate }) => {
+ws.onmessage = async ({ data, candidate }) => {
     try {
-        if (desc) {
+        if (data) {
+            data = JSON.parse(data)
+            data = data['data']
             // If you get an offer, you need to reply with an answer.
-            if (desc.type === 'offer') {
-                await pc.setRemoteDescription(desc);
+            if (data.type === 'offer') {
+                await pc.setRemoteDescription(data);
                 const stream =
                     await navigator.mediaDevices.getUserMedia(constraints);
                 stream.getTracks().forEach((track) =>
                     pc.addTrack(track, stream));
                 await pc.setLocalDescription(await pc.createAnswer());
-                console.log({ desc: pc.localDescription });
+                console.log({ data: pc.localDescription });
                 ws.send(JSON.stringify({ data: pc.localDescription }));
-            } else if (desc.type === 'answer') {
-                await pc.setRemoteDescription(desc);
+            } else if (data.type === 'answer') {
+                await pc.setRemoteDescription(data);
             } else {
                 console.log('Unsupported SDP type.');
             }
