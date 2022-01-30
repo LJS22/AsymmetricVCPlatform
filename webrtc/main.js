@@ -11,7 +11,7 @@ if (hasGetUserMedia()) {
 
 // WebRTC Setup
 
-const ws = new WebSocket("ws://localhost:8000/ws")
+const ws = new WebSocket("ws://localhost:9000")
 
 const constraints = {
     video: true,
@@ -33,12 +33,13 @@ let remoteStream = null;
 
 // Setup event listeners
 
-pc.onicecandidate = ({ candidate }) => ws.emit({ candidate });
+pc.onicecandidate = ({ candidate }) => ws.send({ candidate });
 
 pc.onnegotiationneeded = async () => {
     try {
-        await pc.setLocalDescription(await pc.createOffer());
-        ws.send({ desc: pc.localDescription });
+        data = await pc.setLocalDescription(await pc.createOffer());
+        console.log({ desc: pc.localDescription });
+        ws.send(JSON.stringify({ data: pc.localDescription }));
     } catch (err) {
         console.error(err);
     }
@@ -58,7 +59,7 @@ async function start() {
             await navigator.mediaDevices.getUserMedia(constraints);
         stream.getTracks().forEach((track) =>
             pc.addTrack(track, stream));
-        localStream.srcObject = stream;
+        localVideo.srcObject = stream;
     } catch (err) {
         console.error(err);
     }
@@ -75,7 +76,8 @@ ws.onmessage = async ({ desc, candidate }) => {
                 stream.getTracks().forEach((track) =>
                     pc.addTrack(track, stream));
                 await pc.setLocalDescription(await pc.createAnswer());
-                ws.send({ desc: pc.localDescription });
+                console.log({ desc: pc.localDescription });
+                ws.send(JSON.stringify({ data: pc.localDescription }));
             } else if (desc.type === 'answer') {
                 await pc.setRemoteDescription(desc);
             } else {
@@ -88,3 +90,5 @@ ws.onmessage = async ({ desc, candidate }) => {
         console.error(err);
     }
 };
+
+start()
